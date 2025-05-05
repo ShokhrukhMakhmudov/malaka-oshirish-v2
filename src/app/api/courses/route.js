@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import Course from "../../../../models/Course";
+import { Course } from "../../../../models";
 import connectMongoDb from "../../../../lib/mongodb";
 
 // Подключение к базе данных

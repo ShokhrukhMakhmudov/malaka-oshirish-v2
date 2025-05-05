@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Loader from "../../../../components/Loader";
 import ImageInput from "../../../../components/ImageInput";
@@ -7,23 +7,41 @@ import ImageInput from "../../../../components/ImageInput";
 export default function AddGraduate() {
   const [formData, setFormData] = useState({
     name: "",
-    lastname: "",
-    surname: "",
+    rank: "",
     passport: "",
     jshir: "",
     photo: "",
+    courseId: "",
   });
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-
+  const [courses, setCourses] = useState([]);
   const router = useRouter();
 
+  useEffect(() => {
+    const fetchCourses = async () => {
+      try {
+        const response = await fetch("/api/courses");
+        const data = await response.json();
+
+        if (response.ok) {
+          setCourses(data);
+        } else {
+          setError(data.message || "Ошибка при загрузке курсов");
+        }
+      } catch (error) {
+        setError("Ошибка сети или сервера");
+      }
+    };
+
+    fetchCourses();
+  }, []);
   // Обработчик изменения значений полей формы
   const handleChange = (e) => {
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value.trim(),
+      [e.target.name]: e.target.value,
     });
   };
   const handleUpload = async () => {
@@ -64,7 +82,7 @@ export default function AddGraduate() {
     }
 
     try {
-      const response = await fetch("/api/addgraduate", {
+      const response = await fetch("/api/students", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -98,18 +116,6 @@ export default function AddGraduate() {
             <ImageInput setFile={setFile} />
             <div className="w-full">
               <label className="label">
-                <span className="label-text text-lg">Familiya</span>
-              </label>
-              <input
-                type="text"
-                name="lastname"
-                placeholder="Familiya"
-                className="input input-bordered text-xl w-full"
-                value={formData.lastname}
-                onChange={handleChange}
-                required
-              />
-              <label className="label">
                 <span className="label-text text-lg">Ism</span>
               </label>
               <input
@@ -121,59 +127,79 @@ export default function AddGraduate() {
                 onChange={handleChange}
                 required
               />
-
               <label className="label">
-                <span className="label-text text-lg">Otasining ismi</span>
+                <span className="label-text text-lg">
+                  Pasport seriya va raqami
+                </span>
               </label>
               <input
                 type="text"
-                name="surname"
-                placeholder="Otasining ismi"
+                name="passport"
                 className="input input-bordered text-xl w-full"
-                value={formData.surname}
+                value={formData.passport}
+                onChange={handleChange}
+                placeholder="AA 1234567"
+                maxLength={9}
+                minLength={9}
+                pattern="[A-Z]{2}[0-9]{7}"
+                title="Pasport seriyasi 2 harf va 7 raqam bo'lishi kerak. Masalan: AA1234567"
+                required
+              />
+              <label className="label">
+                <span className="label-text text-lg">JSHIR</span>
+              </label>
+              <input
+                name="jshir"
+                type="text"
+                placeholder="14 ta raqam"
+                maxLength={14}
+                minLength={14}
+                regex="[0-9]{14}"
+                pattern="[0-9]{14}"
+                title="JSHIR 14 raqam bo'lishi kerak"
+                className="input input-bordered text-xl w-full"
+                value={formData.jshir}
                 onChange={handleChange}
                 required
               />
             </div>
           </div>
-
+        </div>
+        <div className="form-control mb-4">
           <label className="label">
-            <span className="label-text text-lg">Pasport seriya va raqami</span>
+            <span className="label-text text-lg">Unvoni</span>
           </label>
           <input
             type="text"
-            name="passport"
-            className="input input-bordered text-xl"
-            value={formData.passport}
+            name="rank"
+            placeholder="Misol: Mayor"
+            className="w-full input input-bordered text-xl"
+            value={formData.rank}
             onChange={handleChange}
-            placeholder="AA 1234567"
-            maxLength={9}
-            minLength={9}
-            pattern="[A-Z]{2}[0-9]{7}"
-            title="Pasport seriyasi 2 harf va 7 raqam bo'lishi kerak. Masalan: AA1234567"
             required
           />
           <label className="label">
-            <span className="label-text text-lg">JSHIR</span>
+            <span className="label-text">Kursni tanlang</span>
           </label>
-          <input
-            name="jshir"
-            type="text"
-            placeholder="14 ta raqam"
-            maxLength={14}
-            minLength={14}
-            regex="[0-9]{14}"
-            pattern="[0-9]{14}"
-            title="JSHIR 14 raqam bo'lishi kerak"
-            className="input input-bordered text-xl"
-            value={formData.jshir}
+          <select
+            className="select select-bordered w-full text-xl"
+            value={formData.courseId}
+            name="courseId"
             onChange={handleChange}
-            required
-          />
+            required>
+            <option value="" disabled>
+              Kursni tanlang
+            </option>
+            {courses.map((course) => (
+              <option key={course._id} value={course._id}>
+                {course.name} ({course.prefix})
+              </option>
+            ))}
+          </select>
         </div>
         {error && <p style={{ color: "red" }}>{error}</p>}
         <div className="form-control mt-6">
-          <button className="btn btn-primary text-white text-lg">
+          <button className="btn btn-primary text-primary-content text-lg">
             Qo'shish
           </button>
         </div>

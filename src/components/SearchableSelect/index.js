@@ -12,7 +12,7 @@ export default function SearchableSelect({
 
   // Фильтрация студентов
   const filteredStudents = students.filter((sc) =>
-    `${sc.student.fullName} ${sc.course.name}`
+    `${sc.student?.fullName} ${sc.course?.name}`
       .toLowerCase()
       .includes(searchTerm.toLowerCase())
   );

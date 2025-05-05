@@ -5,20 +5,45 @@ import { Student, StudentCourse } from "../../../../models";
 export async function POST(req, res) {
   await connectMongoDb();
 
-  const { name, lastname, surname, passport, jshir, photo } = await req.json(); // используйте req.json() для получения данных в Next.js API роуте
+  const { name, rank, passport, jshir, photo, courseId } = await req.json(); // используйте req.json() для получения данных в Next.js API роуте
 
+  if (!courseId) {
+    return NextResponse.json(
+      { success: false, message: "Kurs topilmadi" },
+      { status: 400 }
+    );
+  }
+  let student = await Student.findOne({
+    passportSeries: passport,
+    jshir,
+  });
+
+  if (student) {
+    return NextResponse.json(
+      { success: false, message: "Tinglovchi ma'lumotlar mavjud" },
+      { status: 400 }
+    );
+  }
   try {
     // Создание и сохранение нового выпускника
     const graduate = new Student({
-      name,
-      surname,
-      lastname,
-      passport: passport.toUpperCase().trim(),
+      fullName: name,
+      rank,
+      passportSeries: passport.toUpperCase().trim(),
       jshir: jshir.toUpperCase().trim(),
       photo,
     });
 
     const savedGraduate = await graduate.save();
+
+    // Создание и сохранение связи между выпускником и курсом
+    const studentCourse = new StudentCourse({
+      student: savedGraduate._id,
+      course: courseId,
+    });
+
+    await studentCourse.save();
+
     return new Response(
       JSON.stringify({ success: true, graduate: savedGraduate }),
       { status: 200 }
@@ -174,8 +199,8 @@ export async function DELETE(req) {
         message: "Student va uning kurslari o'chirildi",
         deletedCount: {
           student: 1,
-          courses: (await StudentCourse.countDocuments({ student: id })) // Для проверки
-        }
+          courses: await StudentCourse.countDocuments({ student: id }), // Для проверки
+        },
       },
       { status: 200 }
     );
@@ -184,7 +209,7 @@ export async function DELETE(req) {
       {
         success: false,
         message: error.message,
-        errorCode: "DELETE_STUDENT_ERROR"
+        errorCode: "DELETE_STUDENT_ERROR",
       },
       { status: 500 }
     );
