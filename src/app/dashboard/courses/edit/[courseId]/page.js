@@ -1,9 +1,9 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Loader from "../../../../components/Loader";
+import Loader from "../../../../../components/Loader";
 
-export default function AddCourse() {
+export default function EditCourse({ params: { courseId } }) {
   const [formData, setFormData] = useState({
     name: "", // Название курса
     prefix: "", // Префикс курса
@@ -12,6 +12,22 @@ export default function AddCourse() {
   const [error, setError] = useState(null);
 
   const router = useRouter();
+
+  useEffect(() => {
+    const fetchCourse = async () => {
+      try {
+        const response = await fetch(`/api/courses?id=${courseId}`);
+        const course = await response.json();
+        setFormData({
+          name: course.name,
+          prefix: course.prefix,
+        });
+      } catch (error) {
+        setError("Malumotlarni olishda xatolik yuz berdi.");
+      }
+    };
+    fetchCourse();
+  }, [courseId]);
 
   // Обработчик изменения значений полей формы
   const handleChange = (e) => {
@@ -28,17 +44,20 @@ export default function AddCourse() {
 
     try {
       const response = await fetch("/api/courses", {
-        method: "POST",
+        method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          id: courseId,
+          ...formData,
+        }),
       });
 
       const result = await response.json();
 
       if (result.success) {
-        alert("Kurs muvaffaqiyatli qo'shildi!");
+        alert("Kurs muvaffaqiyatli o'zgartirildi!");
         router.push("/dashboard/courses");
       } else {
         setError("Xatolik: " + result.message);
@@ -51,7 +70,7 @@ export default function AddCourse() {
 
   return (
     <div className="container mt-10">
-      <h1 className="text-4xl font-bold mb-5 text-center">Kurs qo'shish</h1>
+      <h1 className="text-4xl font-bold mb-5 text-center">Kurs Tahrirlash</h1>
 
       <form className="card-body max-w-[700px] mx-auto" onSubmit={handleSubmit}>
         <div className="form-control">
@@ -86,7 +105,7 @@ export default function AddCourse() {
 
         <div className="form-control mt-6">
           <button className="btn btn-primary text-primary-content text-lg">
-            Qo'shish
+            O'zgartirish
           </button>
         </div>
       </form>

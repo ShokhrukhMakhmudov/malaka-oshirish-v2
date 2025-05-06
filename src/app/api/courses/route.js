@@ -58,11 +58,40 @@ export async function GET(req) {
   }
 }
 
-export async function PUT() {
-  return NextResponse.json(
-    { success: false, message: "Метод не разрешен" },
-    { status: 405 }
-  );
+export async function PUT(req) {
+  await connectMongoDb();
+
+  try {
+    // Получаем данные из тела запроса
+    const { name, prefix, id } = await req.json();
+
+    // Проверяем, что все обязательные поля заполнены
+    if (!name || !prefix) {
+      return NextResponse.json(
+        { success: false, message: "Название и префикс курса обязательны" },
+        { status: 400 }
+      );
+    }
+
+    // Создаем новый курс
+    const newCourse = await Course.findByIdAndUpdate(id, { name, prefix });
+
+    // Возвращаем успешный ответ
+    return NextResponse.json(
+      {
+        success: true,
+        message: "Kurs muvaffaqiyatli o'zgartirildi!",
+        data: newCourse,
+      },
+      { status: 201 }
+    );
+  } catch (error) {
+    // Обработка ошибок
+    return NextResponse.json(
+      { success: false, message: error.message },
+      { status: 500 }
+    );
+  }
 }
 
 export async function DELETE(req) {

@@ -1,6 +1,7 @@
 // app/api/generate-certificate/route.js
 import { NextResponse } from "next/server";
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
+import fontKit from "@pdf-lib/fontkit";
 import QRCode from "qrcode";
 import fs from "fs";
 import path from "path";
@@ -12,8 +13,8 @@ const TEMPLATE_COORDINATES = {
   courseName: { x: "center", y: 470 },
   certificateSeries: { x: "center", y: 372 },
   description: { x: "center", y: 310 },
-  date: { x: 233.5, y: 71 },
-  certificateNumber: { x: 706, y: 70 },
+  date: { x: 232, y: 71 },
+  certificateNumber: { x: 706, y: 69 },
   qrCode: { x: 50, y: 30, size: 110 },
 };
 
@@ -62,10 +63,24 @@ export async function POST(req) {
 
     const templateBytes = fs.readFileSync(templatePath);
     const pdfDoc = await PDFDocument.load(templateBytes);
-    const timesRomanFont = await pdfDoc.embedFont(StandardFonts.TimesRoman);
-    const timesRomanFontBold = await pdfDoc.embedFont(
-      StandardFonts.TimesRomanBold
+    pdfDoc.registerFontkit(fontKit);
+
+    // Путь к шрифту
+    const fontPath = path.join(process.cwd(), "public/font/DejaVuSans.ttf");
+    const fontBoldPath = path.join(
+      process.cwd(),
+      "public/font/DejaVuSans-Bold.ttf"
     );
+
+    // Чтение шрифтов
+    const DejaVuSans = fs.readFileSync(fontPath);
+    const DejaVuSansBold = fs.readFileSync(fontBoldPath);
+    const FontReg = await pdfDoc.embedFont(DejaVuSans, {
+      subset: true,
+    });
+    const FontBold = await pdfDoc.embedFont(DejaVuSansBold, {
+      subset: true,
+    });
 
     // Получаем первую страницу
     const pages = pdfDoc.getPages();
@@ -74,7 +89,7 @@ export async function POST(req) {
     console.log(height, width);
 
     // Добавляем текст с кастомным шрифтом
-    const addText = (text, x, y, size = 12, font = timesRomanFontBold) => {
+    const addText = (text, x, y, size = 12, font = FontBold) => {
       if (x === "center") {
         const textWidth = font.widthOfTextAtSize(text, size);
         console.log(text, textWidth);
@@ -111,10 +126,10 @@ export async function POST(req) {
 
     // Серийный номер сертификата
     const course = await Course.findById(studentCourse.course);
-    const certificateNumber = String(Date.now()).slice(0, 6);
-    const certificateSeries = `${course.prefix}-${certificateNumber}`;
+    const certificateNumber = cerNum;
+    const certificateSeries = `${course.prefix} ${certificateNumber}`;
     addText(
-      certificateSeries.replace("-", " - "),
+      certificateSeries,
       TEMPLATE_COORDINATES.certificateSeries.x,
       TEMPLATE_COORDINATES.certificateSeries.y,
       13
@@ -125,7 +140,8 @@ export async function POST(req) {
       certificateNumber,
       TEMPLATE_COORDINATES.certificateNumber.x,
       TEMPLATE_COORDINATES.certificateNumber.y,
-      12
+      10,
+      FontReg
     );
     // Описание
     message.split("\n").forEach((line, index) => {
@@ -137,9 +153,17 @@ export async function POST(req) {
       );
     });
     // Дата выдачи
-    addText(date, TEMPLATE_COORDINATES.date.x, TEMPLATE_COORDINATES.date.y, 12);
+    addText(
+      date,
+      TEMPLATE_COORDINATES.date.x,
+      TEMPLATE_COORDINATES.date.y,
+      11,
+      FontReg
+    );
     // Генерация QR-кода
-    const qrUrl = `${process.env.NEXTAUTH_URL}/certificates/${certificateSeries}.pdf`;
+    const qrUrl = `${process.env.NEXTAUTH_URL}/certificates/${certificateSeries
+      .replaceAll(" ", "")
+      .replaceAll("№", "")}.pdf`;
     const qrImage = await QRCode.toBuffer(qrUrl);
     const embeddedQr = await pdfDoc.embedPng(qrImage);
     page.drawImage(embeddedQr, {
@@ -157,17 +181,24 @@ export async function POST(req) {
       fs.mkdirSync(outputDir, { recursive: true });
     }
 
-    const outputPath = path.join(outputDir, `${certificateSeries}.pdf`);
+    const outputPath = path.join(
+      outputDir,
+      `${certificateSeries.replaceAll(" ", "").replaceAll("№", "")}.pdf`
+    );
     fs.writeFileSync(outputPath, pdfBytes);
 
     // Обновление записи в БД
     studentCourse.certificateNumber = certificateSeries;
-    studentCourse.certificateUrl = `/certificates/${certificateSeries}.pdf`;
+    studentCourse.certificateUrl = `/certificates/${certificateSeries
+      .replaceAll(" ", "")
+      .replaceAll("№", "")}.pdf`;
     await studentCourse.save();
 
     return NextResponse.json({
       success: true,
-      certificateUrl: `/certificates/${certificateSeries}.pdf`,
+      certificateUrl: `/certificates/${certificateSeries
+        .replaceAll(" ", "")
+        .replaceAll("№", "")}.pdf`,
     });
   } catch (error) {
     console.error("Certificate generation error:", error);

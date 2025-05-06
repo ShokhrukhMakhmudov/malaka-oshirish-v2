@@ -51,6 +51,7 @@ export default function CertificateGenerator() {
       if (result.success) {
         setCertificateUrl(result.certificateUrl);
         setStudents((prev) => prev.filter((sc) => sc._id !== selectedId));
+        setSelectedId("");
       }
     } finally {
       setLoading(false);
@@ -86,7 +87,7 @@ export default function CertificateGenerator() {
         value={certificateNumber}
         onChange={(e) => setCertificateNumber(e.target.value)}
         className="input input-bordered w-full mb-4"
-        placeholder="Misol: MO-123456"
+        placeholder="Misol: 123456"
       />
       <label htmlFor="date" className="block text-lg font-bold mb-2">
         Sana:
